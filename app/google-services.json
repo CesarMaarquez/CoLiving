@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1048152620711",
+    "project_id": "coliving-984c8",
+    "storage_bucket": "coliving-984c8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1048152620711:android:e476893d6a4df7132b6582",
+        "android_client_info": {
+          "package_name": "net.azarquiel.coliving"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD6yJ4CDA7mZzPSWXEMJoL3L5P3NZS4b7I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
