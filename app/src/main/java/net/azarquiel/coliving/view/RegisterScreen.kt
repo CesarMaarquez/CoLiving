@@ -13,16 +13,19 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import net.azarquiel.coliving.navigation.AppScreens
 import net.azarquiel.coliving.viewmodel.MainViewModel
-
 @Composable
 fun RegisterScreen(
     navController: NavHostController,
-    viewModel: MainViewModel
+    viewmodel: MainViewModel
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    fun isValidEmail(email: String): Boolean {
+        return android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()
+    }
 
     Column(
         modifier = Modifier
@@ -68,12 +71,23 @@ fun RegisterScreen(
 
         Button(
             onClick = {
-                if (password == confirmPassword) {
-                    viewModel.createUser(email, password) {
-                        navController.navigate(AppScreens.MainScreen.route)
+                errorMessage = when {
+                    email.isBlank() || password.isBlank() || confirmPassword.isBlank() ->
+                        "Rellena todos los campos"
+                    !isValidEmail(email) ->
+                        "Correo electrónico no válido"
+                    password != confirmPassword ->
+                        "Las contraseñas no coinciden"
+                    password.length < 6 ->
+                        "La contraseña debe tener al menos 6 caracteres"
+                    else -> {
+                        viewmodel.createUser(email, password) {
+                            navController.navigate(AppScreens.MainScreen.route)
+                            viewmodel.setUserLogged(true)
+                        }
+                        //el onclick debe tener codigo, si no cruje
+                        null
                     }
-                } else {
-                    errorMessage = "Las contraseñas no coinciden"
                 }
             },
             modifier = Modifier.fillMaxWidth()

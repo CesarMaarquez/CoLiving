@@ -42,6 +42,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
 import androidx.compose.runtime.Composable
@@ -72,6 +73,7 @@ import java.util.Date
 import java.util.Locale
 import java.util.UUID
 
+
 @Composable
 fun MainScreen(navController: NavHostController, viewModel: MainViewModel) {
     Scaffold(
@@ -85,13 +87,12 @@ fun MainScreen(navController: NavHostController, viewModel: MainViewModel) {
             ) {
 
                 // Contenido principal
-                CustomContent(padding, viewModel)
+                CustomContent(padding, viewModel, navController)
 
-                // FAB izquierdo con menú
                 FabMenu(
                     viewModel = viewModel,
                     onCrearVotacion = {
-                        viewModel.dialogDetailVotacion.value = true
+                        viewModel.updateDialogDetailVotacion(true)
                     },
                     onCrearGasto = {
                         // Navegación o lógica
@@ -104,9 +105,10 @@ fun MainScreen(navController: NavHostController, viewModel: MainViewModel) {
                 // Diálogo flotante adicional si lo tienes
                 DialogFab(viewModel)
 
-                if (viewModel.dialogDetailVotacion.value == true) {
+                if (viewModel.dialogDetailVotacion) {
                     Dialog(
-                        onDismissRequest = { viewModel.dialogDetailVotacion.value = false }
+                        // al pulsar fuera del dialogo se cierra
+                        onDismissRequest = { viewModel.updateDialogDetailVotacion(false)}
                     ) {
                         Surface(
                             shape = RoundedCornerShape(12.dp),
@@ -117,7 +119,7 @@ fun MainScreen(navController: NavHostController, viewModel: MainViewModel) {
                         ) {
                             CreateVoteScreen(
                                 viewModel = viewModel,
-                                onClose = { viewModel.dialogDetailVotacion.value = false }
+                                onClose = { viewModel.updateDialogDetailVotacion(false)}
                             )
                         }
                     }
@@ -165,8 +167,7 @@ fun CustomFAB(viewModel: MainViewModel) {
     }
 }
 
-
-//ESTA FUNCION IRIA DENTRO DE UNA OPCION DE CREAR VOTACION QUE CXREAREMOS DESPUES (MENU CON DISTINTAS OPCIONES)
+// compose de creación de una votación, que va dentro de un dialog
 @Composable
 fun CreateVoteScreen(
     viewModel: MainViewModel,
@@ -237,7 +238,7 @@ fun CreateVoteScreen(
         ) {
             Text("Fecha límite: ", fontWeight = FontWeight.SemiBold)
             Text(
-                text = deadline?.let { dateFormatter.format(Date(it)) } ?: "No seleccionada",
+                text = deadline?.let { dateFormatter.format(Date(it)) } ?: "--",
                 modifier = Modifier.weight(1f)
             )
             Button(onClick = { showDatePicker = true }) {
@@ -270,16 +271,13 @@ fun CreateVoteScreen(
                     )
 
                     viewModel.guardarVotacion(
-                        pregunta = votacion.pregunta,
-                        opciones = votacion.opciones,
-                        fechaLimite = votacion.fechaLimite,
-                        anonima = votacion.anonima,
+                        votacion = votacion,
                         onSuccess = {
                             Toast.makeText(context, "Votación creada", Toast.LENGTH_SHORT).show()
                             onClose()
                         },
                         onFailure = {
-                            //Toast.makeText(context, "Error: ${it.message}", Toast.LENGTH_LONG).show()
+                            Toast.makeText(context, "Error al guardar", Toast.LENGTH_LONG).show()
                         }
                     )
                 } else {
@@ -314,7 +312,8 @@ fun CreateVoteScreen(
 @Composable
 fun ActiveVotesScreen(
     votaciones: List<Votacion>,
-    onVotacionClick: (Votacion) -> Unit
+    onVotacionClick: (Votacion) -> Unit,
+    viewModel: MainViewModel
 ) {
     val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
 
@@ -334,6 +333,16 @@ fun ActiveVotesScreen(
             Text("No hay votaciones activas en este momento.")
         } else {
             actuales.forEach { votacion ->
+                // Estado para almacenar el recuento de votos
+                val recuento = remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
+
+                // Llamada a la función para contar votos
+                LaunchedEffect(votacion.id) {
+                    viewModel.contarVotos(votacion.id) {
+                        recuento.value = it
+                    }
+                }
+
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -351,7 +360,7 @@ fun ActiveVotesScreen(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Text(
-                            text = "Fecha límite: ${dateFormatter.format(java.util.Date(votacion.fechaLimite))}",
+                            text = "Fecha límite: ${dateFormatter.format(Date(votacion.fechaLimite))}",
                             style = MaterialTheme.typography.bodySmall
                         )
 
@@ -360,6 +369,17 @@ fun ActiveVotesScreen(
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary
                         )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Mostrar recuento de votos
+                        if (recuento.value.isNotEmpty()) {
+                            recuento.value.forEach { (opcion, cantidad) ->
+                                Text(text = "$opcion: $cantidad votos", fontSize = 14.sp)
+                            }
+                        } else {
+                            Text("Contando votos...", fontSize = 14.sp)
+                        }
                     }
                 }
             }
@@ -367,160 +387,7 @@ fun ActiveVotesScreen(
     }
 }
 
-@Composable
-fun VoteDetailScreen(
-    votacion: Votacion,
-    userId: String, // desde FirebaseAuth.getInstance().currentUser?.uid
-    onVotoRealizado: () -> Unit // para navegar atrás o mostrar mensaje
-) {
-    var selectedOption by remember { mutableStateOf<String?>(null) }
-    val context = LocalContext.current
-    val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
 
-
-
-    Column(modifier = Modifier
-        .padding(16.dp)
-        .verticalScroll(rememberScrollState())
-    ) {
-        Text("Votación", fontSize = 20.sp, fontWeight = FontWeight.Bold)
-
-        Spacer(Modifier.height(12.dp))
-
-        Text(text = votacion.pregunta, style = MaterialTheme.typography.titleLarge)
-
-        Spacer(Modifier.height(12.dp))
-
-        Text(
-            text = "Fecha límite: ${dateFormatter.format(java.util.Date(votacion.fechaLimite))}",
-            style = MaterialTheme.typography.bodySmall
-        )
-
-        Text(
-            text = if (votacion.anonima) "Votación anónima" else "Votación pública",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.primary
-        )
-
-        Spacer(Modifier.height(16.dp))
-
-        votacion.opciones.forEach { opcion ->
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { selectedOption = opcion }
-                    .padding(vertical = 8.dp)
-            ) {
-                RadioButton(
-                    selected = selectedOption == opcion,
-                    onClick = { selectedOption = opcion }
-                )
-                Text(text = opcion)
-            }
-        }
-
-        Spacer(Modifier.height(24.dp))
-
-        Button(
-            onClick = {
-                if (selectedOption != null) {
-                    enviarVotoAFirebase(
-                        votacionId = votacion.id,
-                        opcionSeleccionada = selectedOption!!,
-                        userId = if (votacion.anonima) null else userId,
-                        context = context,
-                        onSuccess = onVotoRealizado
-                    )
-                } else {
-                    Toast.makeText(context, "Selecciona una opción", Toast.LENGTH_SHORT).show()
-                }
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Votar")
-        }
-    }
-}
-
-
-fun enviarVotoAFirebase(
-    votacionId: String,
-    opcionSeleccionada: String,
-    userId: String?, // si es null, se guarda como anónimo
-    context: Context,
-    onSuccess: () -> Unit
-) {
-//    val db = Firebase.firestore
-//    val votosRef = db.collection("votaciones").document(votacionId).collection("votos")
-//
-//    val voto = hashMapOf(
-//        "opcion" to opcionSeleccionada,
-//        "fecha" to FieldValue.serverTimestamp()
-//    )
-//    if (userId != null) {
-//        voto["usuario"] = userId
-//    }
-//
-//    votosRef.add(voto)
-//        .addOnSuccessListener {
-//            Toast.makeText(context, "Voto registrado", Toast.LENGTH_SHORT).show()
-//            onSuccess()
-//        }
-//        .addOnFailureListener {
-//            Toast.makeText(context, "Error al votar", Toast.LENGTH_SHORT).show()
-//        }
-}
-
-
-//@Composable
-//fun DialogFab(viewModel: MainViewModel) {
-//    val context = LocalContext.current
-//    val openDialog = viewModel.openDialog.observeAsState(false)
-//    var msg by remember { mutableStateOf("") }
-//    var isErrorEmptyNombre by remember { mutableStateOf(true) }
-//    if (openDialog.value) {
-//        AlertDialog(
-//            title = { Text(text = "Add Post") },
-//            text = {
-//                Column{
-//                    TextField(
-//                        modifier = Modifier.padding(bottom = 30.dp),
-//                        value = msg,
-//                        onValueChange = {
-//                            msg = it
-//                            isErrorEmptyNombre = msg.isEmpty() },
-//                        label = { Text("Message") },
-//                        placeholder = { Text("Message") },
-//                        leadingIcon = { Icon(Icons.Default.Edit, contentDescription = "Edit") },
-//                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
-//                        singleLine = true
-//                    )
-//                }},
-//            onDismissRequest = {  // Si pulsamos fuera cierra
-//                viewModel.setDialog(false)
-//            },
-//            confirmButton = {
-//                Button(
-//                    onClick = {
-//                        if (msg.isEmpty()) {
-//                            Toast.makeText( context, "required fields", Toast.LENGTH_LONG).show()
-//                        }
-//                        else {
-//                            //viewModel.addPost(Post("César", msg))
-//                            viewModel.setDialog(false)
-//                            msg = ""
-//                        }})
-//                { Text("Ok") }
-//            },
-//            dismissButton = {
-//                Button(
-//                    onClick = { viewModel.setDialog(false) })
-//                { Text("Cancel") }
-//            }
-//        )
-//    }
-//}
 
 @Composable
 fun FabMenu(
@@ -574,16 +441,16 @@ fun FabMenu(
 }
 
 
-
-
+//CHAT
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DialogFab(viewModel: MainViewModel) {
     val context = LocalContext.current
-    val openDialog = viewModel.openDialog.observeAsState(false)
+    val openDialog by viewModel.openDialog.observeAsState(false)
+    val mensajes by viewModel.mensajes.observeAsState(emptyList())
     var msg by remember { mutableStateOf("") }
-    val messages = remember { mutableStateListOf<String>() }
 
-    if (openDialog.value) {
+    if (openDialog) {
         AlertDialog(
             onDismissRequest = { viewModel.setDialog(false) },
             confirmButton = {},
@@ -592,37 +459,54 @@ fun DialogFab(viewModel: MainViewModel) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(500.dp) // Altura tipo chat
+                        .height(500.dp)
+                        .background(Color(0xFFF3F5F7))
                         .padding(8.dp)
                 ) {
-                    // Área de mensajes
+                    // Lista de mensajes
                     LazyColumn(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxWidth()
-                            .background(Color(0xFFEFEFEF))
+                            .background(Color(0xFFE0F7FA)) // fondo más alegre
                             .padding(8.dp),
-                        reverseLayout = true // Nuevos mensajes al final pero visualmente arriba
+                        reverseLayout = true
                     ) {
-                        items(messages.reversed()) { message ->
-                            Box(
+                        items(mensajes) { mensaje ->
+                            val isCurrentUser = mensaje.user == viewModel.getCurrentUserNick()
+                            val bgColor = if (isCurrentUser) Color(0xFFDCF8C6) else Color.White
+                            val alignment = if (isCurrentUser) Alignment.CenterEnd else Alignment.CenterStart
+                            val bubbleShape = RoundedCornerShape(12.dp)
+
+                            Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 4.dp)
+                                    .padding(vertical = 4.dp),
+                                horizontalAlignment = if (isCurrentUser) Alignment.End else Alignment.Start
                             ) {
-                                Text(
-                                    text = message,
+                                Box(
                                     modifier = Modifier
-                                        .align(Alignment.CenterStart)
-                                        .background(Color.White, shape = RoundedCornerShape(8.dp))
-                                        .padding(8.dp),
-                                    color = Color.Black
-                                )
+                                        .background(bgColor, bubbleShape)
+                                        .padding(12.dp)
+                                ) {
+                                    Column {
+                                        Text(
+                                            text = "${mensaje.user}: ${mensaje.msg}",
+                                            color = Color.Black
+                                        )
+                                        Text(
+                                            text = viewModel.formatTimestamp(mensaje.timestamp),
+                                            fontSize = 10.sp,
+                                            color = Color.Gray,
+                                            modifier = Modifier.align(Alignment.End)
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
 
-                    // Barra de entrada de texto
+                    // Entrada de texto + botón enviar
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
@@ -637,16 +521,19 @@ fun DialogFab(viewModel: MainViewModel) {
                             modifier = Modifier
                                 .weight(1f)
                                 .height(56.dp),
-//                            colors = TextFieldDefaults.textFieldColors(
-//                                backgroundColor = Color.White
-//                            ),
                             shape = RoundedCornerShape(24.dp),
-                            singleLine = true
+                            singleLine = true,
+                            colors = TextFieldDefaults.textFieldColors(
+                                containerColor = Color(0xFFF0F0F0),
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent
+                            )
+
                         )
                         IconButton(
                             onClick = {
                                 if (msg.isNotBlank()) {
-                                    messages.add("Tú: $msg")
+                                    viewModel.enviarMensaje(msg)
                                     msg = ""
                                 } else {
                                     Toast.makeText(context, "Escribe un mensaje", Toast.LENGTH_SHORT).show()
@@ -656,7 +543,7 @@ fun DialogFab(viewModel: MainViewModel) {
                             Icon(
                                 imageVector = Icons.Default.Check,
                                 contentDescription = "Enviar",
-                                tint = Color(0xFF075E54) // Verde estilo WhatsApp
+                                tint = Color(0xFF128C7E)
                             )
                         }
                     }
@@ -665,6 +552,8 @@ fun DialogFab(viewModel: MainViewModel) {
         )
     }
 }
+
+
 
 
 
@@ -682,6 +571,7 @@ fun CustomTopBar(navController: NavHostController, viewModel: MainViewModel) {
         actions = {
         IconButton(onClick = {
         FirebaseAuth.getInstance().signOut()
+        viewModel.setUserLogged(false)
         navController.navigate(AppScreens.LoginScreen.route) {
             popUpTo(AppScreens.MainScreen.route) { inclusive = true }
         }
@@ -696,7 +586,7 @@ fun CustomTopBar(navController: NavHostController, viewModel: MainViewModel) {
 }
 
 @Composable
-fun CustomContent(padding: PaddingValues, viewModel: MainViewModel) {
+fun CustomContent(padding: PaddingValues, viewModel: MainViewModel, navController: NavHostController) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -706,17 +596,18 @@ fun CustomContent(padding: PaddingValues, viewModel: MainViewModel) {
         // a pintar
         val votaciones = viewModel.votaciones.observeAsState(emptyList())
 
-//        ActiveVotesScreen(
-//            votaciones = votaciones.value,
-//            onVotacionClick = { votacion ->
-//                //navController.navigate("votacionDetalle/${votacion.id}")
-//            }
-//        )
-
-        CreateVoteScreen(
-            viewModel = viewModel,
-            onClose = {}
+        ActiveVotesScreen(
+            votaciones = votaciones.value,
+            onVotacionClick = { votacion ->
+                navController.navigate(AppScreens.VoteDetailScreen.createRoute(votacion.id))
+            },
+            viewModel = viewModel
         )
+
+//        CreateVoteScreen(
+//            viewModel = viewModel,
+//            onClose = {}
+//        )
     }
 }
 

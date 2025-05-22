@@ -8,6 +8,7 @@ import androidx.navigation.compose.rememberNavController
 import net.azarquiel.coliving.view.LoginScreen
 import net.azarquiel.coliving.view.RegisterScreen
 import net.azarquiel.coliving.view.StartScreen
+import net.azarquiel.coliving.view.VoteDetailScreen
 import net.azarquiel.coliving.viewmodel.MainViewModel
 
 
@@ -28,6 +29,19 @@ fun AppNavigation(viewModel: MainViewModel) {
         composable(AppScreens.StartScreen.route) {
             StartScreen(navController, viewModel)
         }
+        composable("VoteDetailScreen/{votacionId}") { backStackEntry ->
+            val votacionId = backStackEntry.arguments?.getString("votacionId")
+            val votacion = viewModel.votaciones.value?.find { it.id == votacionId }
+
+            votacion?.let {
+                VoteDetailScreen(
+                    navController = navController,
+                    viewModel = viewModel,
+                    votacion = it
+                )
+            }
+        }
+
 
     }
 }
@@ -37,4 +51,8 @@ sealed class AppScreens(val route: String) {
     object RegisterScreen: AppScreens(route = "RegisterScreen")
     // Pantalla inicial de la aplicación
     object StartScreen: AppScreens(route = "StartScreen")
+    object VoteDetailScreen : AppScreens("VoteDetailScreen/{votacionId}") {
+        fun createRoute(votacionId: String) = "VoteDetailScreen/$votacionId"
+    }
+
 }

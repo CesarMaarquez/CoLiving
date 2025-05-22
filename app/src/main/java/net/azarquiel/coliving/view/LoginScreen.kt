@@ -69,6 +69,7 @@ fun LoginScreen(
             onClick = {
                 viewmodel.logUser(email, password) {
                     navController.navigate(AppScreens.MainScreen.route)
+                    viewmodel.setUserLogged(true)
                 }
             },
             modifier = Modifier.fillMaxWidth()
