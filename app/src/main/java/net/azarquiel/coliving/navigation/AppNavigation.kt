@@ -5,6 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import net.azarquiel.coliving.view.GastoDetailScreen
 import net.azarquiel.coliving.view.LoginScreen
 import net.azarquiel.coliving.view.RegisterScreen
 import net.azarquiel.coliving.view.StartScreen
@@ -41,8 +42,18 @@ fun AppNavigation(viewModel: MainViewModel) {
                 )
             }
         }
+        composable("GastoDetailScreen/{gastoId}") { backStackEntry ->
+            val gastoId = backStackEntry.arguments?.getString("gastoId")
+            val gasto = viewModel.gastosCompartidos.value?.find { it.id == gastoId }
 
-
+            gasto?.let {
+                GastoDetailScreen(
+                    gasto = it,
+                    viewModel = viewModel,
+                    onBack = { navController.popBackStack() }
+                )
+            }
+        }
     }
 }
 sealed class AppScreens(val route: String) {
@@ -54,5 +65,9 @@ sealed class AppScreens(val route: String) {
     object VoteDetailScreen : AppScreens("VoteDetailScreen/{votacionId}") {
         fun createRoute(votacionId: String) = "VoteDetailScreen/$votacionId"
     }
+    object GastoDetailScreen : AppScreens("GastoDetailScreen/{gastoId}") {
+        fun createRoute(gastoId: String) = "GastoDetailScreen/$gastoId"
+    }
+
 
 }

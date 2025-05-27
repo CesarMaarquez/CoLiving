@@ -1,10 +1,10 @@
 import android.app.DatePickerDialog
-import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import android.provider.Settings
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -28,6 +29,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -36,7 +38,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -49,7 +50,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -59,11 +59,15 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.navigation.NavHostController
+import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.firestore
+import net.azarquiel.coliving.model.GastoCompartido
 import net.azarquiel.coliving.model.Votacion
 import net.azarquiel.coliving.navigation.AppScreens
 import net.azarquiel.coliving.viewmodel.MainViewModel
@@ -76,6 +80,9 @@ import java.util.UUID
 
 @Composable
 fun MainScreen(navController: NavHostController, viewModel: MainViewModel) {
+
+    val usuarios by viewModel.usuarios.observeAsState(emptyList())
+
     Scaffold(
         topBar = { CustomTopBar(navController,viewModel) },
         content = { padding ->
@@ -85,8 +92,6 @@ fun MainScreen(navController: NavHostController, viewModel: MainViewModel) {
                     .fillMaxSize()
                     .padding(padding)
             ) {
-
-                // Contenido principal
                 CustomContent(padding, viewModel, navController)
 
                 FabMenu(
@@ -95,20 +100,16 @@ fun MainScreen(navController: NavHostController, viewModel: MainViewModel) {
                         viewModel.updateDialogDetailVotacion(true)
                     },
                     onCrearGasto = {
-                        // Navegación o lógica
+                        viewModel.updateDialogDetailGasto(true)
                     }
                 )
 
-                // FAB derecho personalizado
                 CustomFAB(viewModel)
-
-                // Diálogo flotante adicional si lo tienes
                 DialogFab(viewModel)
 
                 if (viewModel.dialogDetailVotacion) {
                     Dialog(
-                        // al pulsar fuera del dialogo se cierra
-                        onDismissRequest = { viewModel.updateDialogDetailVotacion(false)}
+                        onDismissRequest = { viewModel.updateDialogDetailVotacion(false) }
                     ) {
                         Surface(
                             shape = RoundedCornerShape(12.dp),
@@ -117,9 +118,29 @@ fun MainScreen(navController: NavHostController, viewModel: MainViewModel) {
                                 .fillMaxWidth()
                                 .padding(16.dp)
                         ) {
-                            CreateVoteScreen(
+                            CreateVote(
                                 viewModel = viewModel,
-                                onClose = { viewModel.updateDialogDetailVotacion(false)}
+                                onClose = { viewModel.updateDialogDetailVotacion(false) }
+                            )
+                        }
+                    }
+                }
+
+                if (viewModel.dialogDetailGasto) {
+                    Dialog(
+                        onDismissRequest = { viewModel.updateDialogDetailGasto(false) }
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            tonalElevation = 8.dp,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                        ) {
+                            CreateGasto(
+                                viewModel = viewModel,
+                                usuarios = usuarios,
+                                onClose = { viewModel.updateDialogDetailGasto(false) }
                             )
                         }
                     }
@@ -128,7 +149,6 @@ fun MainScreen(navController: NavHostController, viewModel: MainViewModel) {
         }
     )
 }
-
 
 
 
@@ -169,7 +189,7 @@ fun CustomFAB(viewModel: MainViewModel) {
 
 // compose de creación de una votación, que va dentro de un dialog
 @Composable
-fun CreateVoteScreen(
+fun CreateVote(
     viewModel: MainViewModel,
     onClose: () -> Unit = {} // callback para cerrar el diálogo desde el contenedor
 ) {
@@ -310,11 +330,13 @@ fun CreateVoteScreen(
 
 
 @Composable
-fun ActiveVotesScreen(
+fun ActiveVotes(
     votaciones: List<Votacion>,
     onVotacionClick: (Votacion) -> Unit,
     viewModel: MainViewModel
 ) {
+    val context = LocalContext.current
+    val firebaseUser = FirebaseAuth.getInstance().currentUser
     val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
 
     Column(
@@ -324,7 +346,6 @@ fun ActiveVotesScreen(
             .verticalScroll(rememberScrollState())
     ) {
         Text("Votaciones activas", fontSize = 20.sp, fontWeight = FontWeight.Bold)
-
         Spacer(modifier = Modifier.height(16.dp))
 
         val actuales = votaciones.filter { it.fechaLimite > System.currentTimeMillis() }
@@ -333,11 +354,27 @@ fun ActiveVotesScreen(
             Text("No hay votaciones activas en este momento.")
         } else {
             actuales.forEach { votacion ->
-                // Estado para almacenar el recuento de votos
-                val recuento = remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
+                val yaVoto = remember(votacion.id) { mutableStateOf(false) }
+                val recuento = remember(votacion.id) { mutableStateOf<Map<String, Int>>(emptyMap()) }
 
-                // Llamada a la función para contar votos
                 LaunchedEffect(votacion.id) {
+                    val docId = if (votacion.anonima) {
+                        Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
+                    } else {
+                        firebaseUser?.uid
+                    }
+
+                    docId?.let {
+                        Firebase.firestore.collection("votaciones")
+                            .document(votacion.id)
+                            .collection("votos")
+                            .document(it)
+                            .get()
+                            .addOnSuccessListener { doc ->
+                                yaVoto.value = doc.exists()
+                            }
+                    }
+
                     viewModel.contarVotos(votacion.id) {
                         recuento.value = it
                     }
@@ -372,7 +409,7 @@ fun ActiveVotesScreen(
 
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        // Mostrar recuento de votos
+                        // Mostrar recuento
                         if (recuento.value.isNotEmpty()) {
                             recuento.value.forEach { (opcion, cantidad) ->
                                 Text(text = "$opcion: $cantidad votos", fontSize = 14.sp)
@@ -380,6 +417,147 @@ fun ActiveVotesScreen(
                         } else {
                             Text("Contando votos...", fontSize = 14.sp)
                         }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Mostrar si ya votó
+                        Text(
+                            text = if (yaVoto.value) "Ya has votado" else "Aún no has votado",
+                            fontSize = 14.sp,
+                            color = if (yaVoto.value) Color.Gray else MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun CreateGasto(
+    viewModel: MainViewModel,
+    usuarios: List<String>, // lista de userIds (puedes pasar nombres y mapear a ids)
+    onClose: () -> Unit = {}
+) {
+    var descripcion by remember { mutableStateOf("") }
+    var total by remember { mutableStateOf("") }
+    var participantes by remember { mutableStateOf(setOf<String>()) }
+
+    val context = LocalContext.current
+
+    Column(
+        modifier = Modifier
+            .padding(16.dp)
+            .verticalScroll(rememberScrollState())
+    ) {
+        Text("Crear Gasto Compartido", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(16.dp))
+
+        OutlinedTextField(
+            value = descripcion,
+            onValueChange = { descripcion = it },
+            label = { Text("Descripción") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(Modifier.height(16.dp))
+
+        OutlinedTextField(
+            value = total,
+            onValueChange = { total = it },
+            label = { Text("Total (€)") },
+            modifier = Modifier.fillMaxWidth(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+        )
+
+        Spacer(Modifier.height(16.dp))
+
+        Text("Participantes", fontWeight = FontWeight.SemiBold)
+
+        usuarios.forEach { userId ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(
+                    checked = participantes.contains(userId),
+                    onCheckedChange = {
+                        participantes = if (it) participantes + userId else participantes - userId
+                    }
+                )
+                Text(text = userId) // Aquí mejor mostrar el nombre real si tienes esa info
+            }
+        }
+
+        Spacer(Modifier.height(24.dp))
+
+        Button(onClick = {
+            val totalDouble = total.toDoubleOrNull()
+            if (descripcion.isBlank() || totalDouble == null || totalDouble <= 0 || participantes.isEmpty()) {
+                Toast.makeText(context, "Completa todos los campos correctamente", Toast.LENGTH_SHORT).show()
+                return@Button
+            }
+
+            val nuevoGasto = GastoCompartido(
+                id = UUID.randomUUID().toString(),
+                descripcion = descripcion,
+                total = totalDouble,
+                participantes = participantes.toList(),
+                pagos = participantes.associateWith { false },
+                creadorId = viewModel.getCurrentUserNick(), // o uid si prefieres
+                timestamp = System.currentTimeMillis()
+            )
+
+            viewModel.guardarGastoCompartido(
+                gasto = nuevoGasto,
+                onSuccess = {
+                    Toast.makeText(context, "Gasto creado", Toast.LENGTH_SHORT).show()
+                    onClose()
+                },
+                onFailure = {
+                    Toast.makeText(context, "Error al crear gasto", Toast.LENGTH_SHORT).show()
+                }
+            )
+        }, modifier = Modifier.fillMaxWidth()) {
+            Text("Crear Gasto")
+        }
+    }
+}
+
+@Composable
+fun GastosCompartidos(
+    gastos: List<GastoCompartido>,
+    viewModel: MainViewModel,
+    onGastoClick: (GastoCompartido) -> Unit
+
+) {
+    val formatter = remember { java.text.SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        if (gastos.isEmpty()) {
+            item {
+                Text("No hay gastos compartidos aún.")
+            }
+        } else {
+            items(gastos.sortedByDescending { it.timestamp }) { gasto ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)
+                        .clickable { onGastoClick(gasto) },
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = gasto.descripcion,
+                            fontWeight = FontWeight.SemiBold,
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text("Total: €${gasto.total}")
+                        Text("Participantes: ${gasto.participantes.size}")
+                        Text("Fecha: ${formatter.format(Date(gasto.timestamp))}")
                     }
                 }
             }
@@ -587,29 +765,34 @@ fun CustomTopBar(navController: NavHostController, viewModel: MainViewModel) {
 
 @Composable
 fun CustomContent(padding: PaddingValues, viewModel: MainViewModel, navController: NavHostController) {
+    val votaciones by viewModel.votaciones.observeAsState(emptyList())
+    val gastos by viewModel.gastosCompartidos.observeAsState(emptyList())
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(padding),
-    )
-    {
-        // a pintar
-        val votaciones = viewModel.votaciones.observeAsState(emptyList())
-
-        ActiveVotesScreen(
-            votaciones = votaciones.value,
+            .padding(padding)
+    ) {
+        ActiveVotes(
+            votaciones = votaciones,
             onVotacionClick = { votacion ->
                 navController.navigate(AppScreens.VoteDetailScreen.createRoute(votacion.id))
             },
             viewModel = viewModel
         )
 
-//        CreateVoteScreen(
-//            viewModel = viewModel,
-//            onClose = {}
-//        )
+        Spacer(modifier = Modifier.height(16.dp))
+
+        GastosCompartidos(
+            gastos = gastos,
+            viewModel = viewModel,
+            onGastoClick = { gasto ->
+                navController.navigate(AppScreens.GastoDetailScreen.createRoute(gasto.id))
+            }
+        )
     }
 }
+
 
 
 

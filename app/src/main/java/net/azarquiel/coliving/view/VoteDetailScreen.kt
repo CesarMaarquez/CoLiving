@@ -1,5 +1,7 @@
 package net.azarquiel.coliving.view
 
+import android.content.Context
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -39,18 +41,23 @@ fun VoteDetailScreen(
     viewModel: MainViewModel,
     votacion: Votacion
 ) {
-    var selectedOption by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
-    val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
 
-    // Simulamos que tienes un userId, si no es anónima
-    val userId = "user123"  // <-- cámbialo por el valor real desde ViewModel o Auth
+
+    val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+    val userId = prefs.getString("userId", null)
+
+    Log.d("VotoDebug", "userId recuperado: $userId")
+    Log.d("VotoDebug", "anonima: ${votacion.anonima}")
+
+
+    var selectedOption by remember { mutableStateOf<String?>(null) }
+    val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
 
     val onVotoRealizado: () -> Unit = {
         Toast.makeText(context, "Voto registrado correctamente", Toast.LENGTH_SHORT).show()
         navController.popBackStack()
     }
-
 
     Column(
         modifier = Modifier
@@ -99,12 +106,20 @@ fun VoteDetailScreen(
         Button(
             onClick = {
                 if (selectedOption != null) {
-                    viewModel.enviarVotoAFirebase(
-                        votacionId = votacion.id,
-                        opcionSeleccionada = selectedOption!!,
-                        userId = if (votacion.anonima) null else userId,
+                    viewModel.votar(
                         context = context,
-                        onSuccess = onVotoRealizado
+                        votacionId = votacion.id,
+                        opcion = selectedOption!!,
+                        anonima = votacion.anonima,
+                        userId = userId,
+                        onSuccess = onVotoRealizado,
+                        onFailure = {
+                            Toast.makeText(
+                                context,
+                                "Error al votar: ${it.message}",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
                     )
                 } else {
                     Toast.makeText(context, "Selecciona una opción", Toast.LENGTH_SHORT).show()
