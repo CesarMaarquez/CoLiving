@@ -21,12 +21,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import net.azarquiel.coliving.model.GastoCompartido
+import net.azarquiel.coliving.viewmodel.GastoDetailViewModel
 import net.azarquiel.coliving.viewmodel.MainViewModel
 
 @Composable
 fun GastoDetailScreen(
     gasto: GastoCompartido,
-    viewModel: MainViewModel,
+    viewModel: GastoDetailViewModel,
     onBack: () -> Unit
 ) {
     val currentUserId = viewModel.getCurrentUserNick()

@@ -11,16 +11,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import net.azarquiel.coliving.MainActivity
 import net.azarquiel.coliving.navigation.AppScreens
 import net.azarquiel.coliving.viewmodel.MainViewModel
+import net.azarquiel.coliving.viewmodel.RegisterViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterScreen(
     navController: NavHostController,
-    viewmodel: MainViewModel
+    viewmodel: RegisterViewModel
 ) {
+    val mainviewmodel = MainViewModel(MainActivity())
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
@@ -127,7 +131,6 @@ fun RegisterScreen(
                         else -> {
                             viewmodel.createUser(email, password, context = context) {
                                 navController.navigate(AppScreens.MainScreen.route)
-                                viewmodel.setUserLogged(true)
                             }
                             null
                         }

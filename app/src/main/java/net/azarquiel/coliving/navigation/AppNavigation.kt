@@ -10,7 +10,12 @@ import net.azarquiel.coliving.view.LoginScreen
 import net.azarquiel.coliving.view.RegisterScreen
 import net.azarquiel.coliving.view.StartScreen
 import net.azarquiel.coliving.view.VoteDetailScreen
+import net.azarquiel.coliving.viewmodel.GastoDetailViewModel
+import net.azarquiel.coliving.viewmodel.LoginViewModel
 import net.azarquiel.coliving.viewmodel.MainViewModel
+import net.azarquiel.coliving.viewmodel.RegisterViewModel
+import net.azarquiel.coliving.viewmodel.StartViewModel
+import net.azarquiel.coliving.viewmodel.VoteDetailViewModel
 
 
 @Composable
@@ -22,13 +27,13 @@ fun AppNavigation(viewModel: MainViewModel) {
             MainScreen(navController, viewModel)
         }
         composable(AppScreens.LoginScreen.route) {
-            LoginScreen(navController, viewModel)
+            LoginScreen(navController, LoginViewModel())
         }
         composable(AppScreens.RegisterScreen.route) {
-            RegisterScreen(navController, viewModel)
+            RegisterScreen(navController, RegisterViewModel())
         }
         composable(AppScreens.StartScreen.route) {
-            StartScreen(navController, viewModel)
+            StartScreen(navController, StartViewModel())
         }
         composable("VoteDetailScreen/{votacionId}") { backStackEntry ->
             val votacionId = backStackEntry.arguments?.getString("votacionId")
@@ -37,7 +42,7 @@ fun AppNavigation(viewModel: MainViewModel) {
             votacion?.let {
                 VoteDetailScreen(
                     navController = navController,
-                    viewModel = viewModel,
+                    viewModel = VoteDetailViewModel(),
                     votacion = it
                 )
             }
@@ -49,7 +54,7 @@ fun AppNavigation(viewModel: MainViewModel) {
             gasto?.let {
                 GastoDetailScreen(
                     gasto = it,
-                    viewModel = viewModel,
+                    viewModel = GastoDetailViewModel(),
                     onBack = { navController.popBackStack() }
                 )
             }

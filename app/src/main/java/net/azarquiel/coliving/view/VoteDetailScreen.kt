@@ -31,6 +31,7 @@ import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import net.azarquiel.coliving.model.Votacion
 import net.azarquiel.coliving.viewmodel.MainViewModel
+import net.azarquiel.coliving.viewmodel.VoteDetailViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -38,7 +39,7 @@ import java.util.Locale
 @Composable
 fun VoteDetailScreen(
     navController: NavController,
-    viewModel: MainViewModel,
+    viewModel: VoteDetailViewModel,
     votacion: Votacion
 ) {
     val context = LocalContext.current

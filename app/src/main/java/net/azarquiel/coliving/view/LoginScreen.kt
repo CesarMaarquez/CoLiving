@@ -14,14 +14,17 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import net.azarquiel.coliving.MainActivity
 import net.azarquiel.coliving.navigation.AppScreens
+import net.azarquiel.coliving.viewmodel.LoginViewModel
 import net.azarquiel.coliving.viewmodel.MainViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
     navController: NavHostController,
-    viewmodel: MainViewModel
+    viewmodel: LoginViewModel
 ) {
+    val mainviewmodel = MainViewModel(MainActivity())
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -110,7 +113,7 @@ fun LoginScreen(
                         password,
                         context,
                         onSuccess = {
-                            viewmodel.setUserLogged(true)
+                            //viewmodel.setUserLogged(true)
                             navController.navigate(AppScreens.MainScreen.route)
                         },
                         onError = { error -> errorMessage = error }

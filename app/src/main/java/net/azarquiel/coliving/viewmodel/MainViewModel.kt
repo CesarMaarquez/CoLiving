@@ -33,8 +33,6 @@ class MainViewModel(mainActivity: MainActivity): ViewModel() {
 
     private val auth: FirebaseAuth = Firebase.auth
 
-    private val _loading = MutableLiveData(false)
-
     private var _mensajes = MutableLiveData<List<Post>>()
     val mensajes: MutableLiveData<List<Post>> = _mensajes
 
@@ -54,6 +52,10 @@ class MainViewModel(mainActivity: MainActivity): ViewModel() {
     private val _usuarios = MutableLiveData<List<String>>() // lista de nicks o emails
     val usuarios: LiveData<List<String>> = _usuarios
 
+    private val authListener = FirebaseAuth.AuthStateListener { firebaseAuth ->
+        _isUserLogged.value = firebaseAuth.currentUser != null
+    }
+
     // utilizo esta forma ya que el livedata da problemas
     var dialogDetailVotacion by mutableStateOf(false)
         private set
@@ -68,12 +70,18 @@ class MainViewModel(mainActivity: MainActivity): ViewModel() {
     val db = Firebase.firestore
 
     init {
+        auth.addAuthStateListener(authListener)
         setListener()
         cargarGastosCompartidos()
         cargarVotaciones()
         cargarUsuarios()
         // chequea en el arranque de la app si estamos logueados o no
         checkUser()
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        auth.removeAuthStateListener(authListener)
     }
 
     private fun setListener() {
@@ -174,22 +182,22 @@ class MainViewModel(mainActivity: MainActivity): ViewModel() {
     }
 
     private fun cargarGastosCompartidos() {
-            Log.d(TAG, "Iniciando carga de gastos compartidos")
-            db.collection("gastosCompartidos")
-                .addSnapshotListener { snapshot, exception ->
-                    if (exception != null) {
-                        Log.e("MainViewModel", "Error al cargar gastos", exception)
-                        return@addSnapshotListener
-                    }
-
-                    snapshot?.let {
-                        val lista = it.documents.mapNotNull { doc ->
-                            doc.toObject(GastoCompartido::class.java)
-                        }
-                        _gastosCompartidos.postValue(lista)
-                    }
+        Log.d(TAG, "Iniciando carga de gastos compartidos")
+        db.collection("gastosCompartidos")
+            .addSnapshotListener { snapshot, exception ->
+                if (exception != null) {
+                    Log.e("MainViewModel", "Error al cargar gastos", exception)
+                    return@addSnapshotListener
                 }
-        }
+
+                snapshot?.let {
+                    val lista = it.documents.mapNotNull { doc ->
+                        doc.toObject(GastoCompartido::class.java)
+                    }
+                    _gastosCompartidos.postValue(lista)
+                }
+            }
+    }
 
 
     fun guardarGastoCompartido(
@@ -204,165 +212,14 @@ class MainViewModel(mainActivity: MainActivity): ViewModel() {
             .addOnFailureListener { onFailure(it) }
     }
 
-    // Marca un usuario como pagado para un gasto compartido
-    fun marcarPagado(
-        gastoId: String,
-        userId: String,
-        onSuccess: () -> Unit,
-        onFailure: (Exception) -> Unit
-    ) {
-        val docRef = db.collection("gastosCompartidos").document(gastoId)
-        db.runTransaction { transaction ->
-            val snapshot = transaction.get(docRef)
-            val gasto = snapshot.toObject(GastoCompartido::class.java)
-            if (gasto != null) {
-                val nuevosPagos = gasto.pagos.toMutableMap()
-                nuevosPagos[userId] = true
-                transaction.update(docRef, "pagos", nuevosPagos)
-            } else {
-                throw Exception("Gasto no encontrado")
-            }
-        }.addOnSuccessListener { onSuccess() }
-            .addOnFailureListener { onFailure(it) }
-    }
 
-    private fun checkUser() {
+    fun checkUser() {
         if (auth.currentUser != null) {
             setUserLogged(true)
         }
         else {
             setUserLogged(false)
         }
-    }
-    fun logUser(
-        email: String,
-        password: String,
-        context: Context,
-        onSuccess: () -> Unit,
-        onError: (String) -> Unit
-    ) {
-        viewModelScope.launch {
-            try {
-                auth.signInWithEmailAndPassword(email, password)
-                    .addOnCompleteListener { task ->
-                        if (task.isSuccessful) {
-                            Log.d("LogUser", "signInWithEmail:success")
-                            val uid = task.result.user?.uid
-
-                            // Guarda el userId en SharePreferences
-                            val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
-                            prefs.edit().putString("userId", uid).apply()
-
-                            onSuccess()
-                        } else {
-                            val exception = task.exception
-                            val errorMsg = when {
-                                exception?.message?.contains("There is no user record") == true -> {
-                                    "El usuario no está registrado"
-                                }
-                                exception?.message?.contains("The password is invalid") == true -> {
-                                    "La contraseña es incorrecta"
-                                }
-                                exception?.message?.contains("The email address is badly formatted") == true -> {
-                                    "El formato del correo es inválido"
-                                }
-                                else -> {
-                                    "Correo o contraseña incorrectos o el usuario no está registrado"
-                                }
-                            }
-                            onError(errorMsg)
-                        }
-
-                    }
-            } catch (e: Exception) {
-                Log.w("LogUser", "signInWithEmail:failure", e)
-                onError("Excepción al iniciar sesión: ${e.localizedMessage}")
-            }
-        }
-    }
-
-
-    fun createUser(
-        email: String,
-        password: String,
-        context: Context,
-        home: () -> Unit
-    ) {
-        if (_loading.value == false) {
-            _loading.value = true
-            auth.createUserWithEmailAndPassword(email, password).addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    Log.d("CreateUser", "createUserWithEmail:success")
-
-                    val nick = task.result.user?.email?.split("@")?.get(0)
-                    updateUser(nick)
-
-                    val uid = task.result.user?.uid
-                    val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
-                    prefs.edit().putString("userId", uid).apply()
-
-                    home()
-                } else {
-                    Log.w("CreateUser", "createUserWithEmail:failure", task.exception)
-                }
-                _loading.value = false
-            }
-        }
-    }
-
-
-
-    // mete el nick automaticamente (antes del @) usado en el chat en la bdd
-    private fun updateUser(nick: String?) {
-        val userId= auth.currentUser?.uid
-        // para introducir duplas de datos en las colecciones (clave, valor)
-        val user = mutableMapOf<String, Any>()
-
-        user["nick"] = nick.toString()
-        user["uid"] = userId.toString()
-
-        FirebaseFirestore.getInstance().collection("user")
-            .add(user)
-            .addOnSuccessListener {
-                Log.d("updateUser", "DocumentSnapshot added with ID: ${it.id}")
-            }
-            .addOnFailureListener { e ->
-                Log.w("updateUser", "Error adding document", e)
-            }
-    }
-
-
-
-
-    fun votar(
-        context: Context,
-        votacionId: String,
-        opcion: String,
-        anonima: Boolean,
-        userId: String?,
-        onSuccess: () -> Unit,
-        onFailure: (Exception) -> Unit
-    ) {
-        val votosRef = db.collection("votaciones").document(votacionId).collection("votos")
-
-        val voto = if (anonima) {
-            val deviceId = Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
-            Voto(userId = null, opcion = opcion, deviceId = deviceId)
-        } else {
-            Voto(userId = userId, opcion = opcion, deviceId = null)
-        }
-
-        val docId = if (anonima) {
-            // usar el deviceId como ID del documento evita votos repetidos desde el mismo dispositivo
-            Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
-        } else {
-            userId!!
-        }
-
-        votosRef.document(docId)
-            .set(voto)
-            .addOnSuccessListener { onSuccess() }
-            .addOnFailureListener { onFailure(it) }
     }
 
 

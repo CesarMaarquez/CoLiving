@@ -12,9 +12,10 @@ import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.delay
 import net.azarquiel.coliving.navigation.AppScreens
 import net.azarquiel.coliving.viewmodel.MainViewModel
+import net.azarquiel.coliving.viewmodel.StartViewModel
 
 @Composable
-fun StartScreen(navController: NavHostController, viewModel: MainViewModel) {
+fun StartScreen(navController: NavHostController, viewModel: StartViewModel) {
     val user = FirebaseAuth.getInstance().currentUser
 
     LaunchedEffect(Unit) {
