@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import android.provider.Settings
 import android.util.Log
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -14,6 +15,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -61,6 +65,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -70,6 +75,7 @@ import androidx.navigation.NavHostController
 import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.firestore
+import net.azarquiel.coliving.R
 import net.azarquiel.coliving.model.GastoCompartido
 import net.azarquiel.coliving.model.Votacion
 import net.azarquiel.coliving.navigation.AppScreens
@@ -316,7 +322,7 @@ fun CreateVote(
     LaunchedEffect(showDatePicker) {
         if (showDatePicker) {
             val calendar = Calendar.getInstance()
-            DatePickerDialog(
+            val dialog = DatePickerDialog(
                 context,
                 { _, year, month, day ->
                     calendar.set(year, month, day, 23, 59, 59)
@@ -326,11 +332,17 @@ fun CreateVote(
                 calendar.get(Calendar.YEAR),
                 calendar.get(Calendar.MONTH),
                 calendar.get(Calendar.DAY_OF_MONTH)
-            ).show()
+            )
+
+            dialog.setOnCancelListener {
+                showDatePicker = false
+            }
+
+            dialog.show()
         }
     }
-}
 
+}
 @Composable
 fun ActiveVotes(
     votaciones: List<Votacion>,
@@ -359,21 +371,19 @@ fun ActiveVotes(
                 val recuento = remember(votacion.id) { mutableStateOf<Map<String, Int>>(emptyMap()) }
 
                 LaunchedEffect(votacion.id) {
-                    val docId = if (votacion.anonima) {
-                        Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
-                    } else {
-                        firebaseUser?.uid
-                    }
+                    if (!votacion.anonima) {
+                        val docId = firebaseUser?.uid
 
-                    docId?.let {
-                        Firebase.firestore.collection("votaciones")
-                            .document(votacion.id)
-                            .collection("votos")
-                            .document(it)
-                            .get()
-                            .addOnSuccessListener { doc ->
-                                yaVoto.value = doc.exists()
-                            }
+                        docId?.let {
+                            Firebase.firestore.collection("votaciones")
+                                .document(votacion.id)
+                                .collection("votos")
+                                .document(it)
+                                .get()
+                                .addOnSuccessListener { doc ->
+                                    yaVoto.value = doc.exists()
+                                }
+                        }
                     }
 
                     viewModel.contarVotos(votacion.id) {
@@ -420,10 +430,15 @@ fun ActiveVotes(
 
                         Spacer(modifier = Modifier.height(8.dp))
 
+                        // Aquí mostramos "Anónima" si es anónima, si no el estado de voto
                         Text(
-                            text = if (yaVoto.value) "Ya has votado" else "Aún no has votado",
+                            text = if (votacion.anonima) "Anónima"
+                            else if (yaVoto.value) "Ya has votado"
+                            else "Aún no has votado",
                             fontSize = 14.sp,
-                            color = if (yaVoto.value) Color.Gray else MaterialTheme.colorScheme.primary
+                            color = if (votacion.anonima) Color.Gray
+                            else if (yaVoto.value) Color.Gray
+                            else MaterialTheme.colorScheme.primary
                         )
                     }
                 }
@@ -755,7 +770,15 @@ fun DialogFab(viewModel: MainViewModel) {
 @Composable
 fun CustomTopBar(navController: NavHostController, viewModel: MainViewModel) {
     TopAppBar(
-        title = { Text(text = "CoLiving") },
+        navigationIcon = {
+            Image(
+                painter = painterResource(id = R.drawable.coliving),
+                contentDescription = "Logo",
+                modifier = Modifier
+                    .width(100.dp)
+            )
+         },
+        title = {},
         colors = topAppBarColors(
             containerColor = MaterialTheme.colorScheme.primary,
             titleContentColor = MaterialTheme.colorScheme.background
@@ -785,7 +808,7 @@ fun CustomContent(padding: PaddingValues, viewModel: MainViewModel, navControlle
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .padding(padding)
+            .padding(4.dp)
     ) {
         item {
             ActiveVotes(

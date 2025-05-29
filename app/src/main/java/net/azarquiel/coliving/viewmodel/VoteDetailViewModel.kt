@@ -2,7 +2,6 @@ package net.azarquiel.coliving.viewmodel
 
 import android.content.Context
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.ui.text.font.FontVariation
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import android.provider.Settings
@@ -38,7 +37,7 @@ class VoteDetailViewModel : ViewModel() {
     fun votar(context: Context, votacionId: String, opcion: String, anonima: Boolean, userId: String?, onSuccess: () -> Unit, onFailure: (Exception) -> Unit) {
         val voto = if (anonima) {
             val deviceId = Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
-            Voto(null, opcion, deviceId.toLong())
+            Voto(null, opcion, deviceId.toString())
         } else {
             Voto(userId, opcion)
         }

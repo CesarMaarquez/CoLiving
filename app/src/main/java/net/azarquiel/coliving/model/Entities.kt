@@ -11,7 +11,7 @@ data class Votacion(
 data class Voto(
     val userId: String? = null,                 // null si es anónima
     val opcion: String = "",
-    val timestamp: Long = System.currentTimeMillis(),
+    val timestamp: String = System.currentTimeMillis().toString(),
     val deviceId: String? = null                // null si es pública
 )
 
