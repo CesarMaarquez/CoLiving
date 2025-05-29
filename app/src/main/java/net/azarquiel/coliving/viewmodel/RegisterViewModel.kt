@@ -31,14 +31,14 @@ class RegisterViewModel : ViewModel() {
 
     //val mainViewModel = MainViewModel(MainActivity())
 
-    fun checkUser() {
-        if (auth.currentUser != null) {
-            setUserLogged(true)
-        }
-        else {
-            setUserLogged(false)
-        }
-    }
+//    fun checkUser() {
+//        if (auth.currentUser != null) {
+//            setUserLogged(true)
+//        }
+//        else {
+//            setUserLogged(false)
+//        }
+//    }
 
     fun createUser(
         email: String,
@@ -67,7 +67,4 @@ class RegisterViewModel : ViewModel() {
         db.collection("user").add(user)
     }
 
-    fun setUserLogged(value: Boolean) {
-        _isUserLogged.value = value
-    }
 }

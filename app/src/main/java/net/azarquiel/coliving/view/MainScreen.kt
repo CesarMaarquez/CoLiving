@@ -5,6 +5,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import android.provider.Settings
+import android.util.Log
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -50,6 +52,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -328,7 +331,6 @@ fun CreateVote(
     }
 }
 
-
 @Composable
 fun ActiveVotes(
     votaciones: List<Votacion>,
@@ -341,9 +343,8 @@ fun ActiveVotes(
 
     Column(
         modifier = Modifier
-            .fillMaxSize()
+            .fillMaxWidth()
             .padding(16.dp)
-            .verticalScroll(rememberScrollState())
     ) {
         Text("Votaciones activas", fontSize = 20.sp, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(16.dp))
@@ -409,7 +410,6 @@ fun ActiveVotes(
 
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        // Mostrar recuento
                         if (recuento.value.isNotEmpty()) {
                             recuento.value.forEach { (opcion, cantidad) ->
                                 Text(text = "$opcion: $cantidad votos", fontSize = 14.sp)
@@ -420,7 +420,6 @@ fun ActiveVotes(
 
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        // Mostrar si ya votó
                         Text(
                             text = if (yaVoto.value) "Ya has votado" else "Aún no has votado",
                             fontSize = 14.sp,
@@ -522,25 +521,45 @@ fun CreateGasto(
 }
 
 @Composable
-fun GastosCompartidos(
+fun ActiveGastosCompartidos(
     gastos: List<GastoCompartido>,
     viewModel: MainViewModel,
     onGastoClick: (GastoCompartido) -> Unit
-
 ) {
-    val formatter = remember { java.text.SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
+    val formatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
+    val finalizadosLocalmente = remember { mutableStateListOf<String>() }
 
-    LazyColumn(
+    // Marcar gastos como finalizados cuando todos hayan pagado
+    LaunchedEffect(gastos) {
+        gastos.forEach { gasto ->
+            val todosPagaron = gasto.participantes.all { gasto.pagos[it] == true }
+
+            if (todosPagaron && !gasto.finalizado && !finalizadosLocalmente.contains(gasto.id)) {
+                viewModel.marcarGastoComoFinalizado(
+                    gastoId = gasto.id,
+                    onSuccess = { finalizadosLocalmente.add(gasto.id) },
+                    onFailure = { Log.e("GastoFinalizado", "Error: ${it.message}") }
+                )
+            }
+        }
+    }
+
+    val gastosActivos = gastos.filter { gasto ->
+        !gasto.finalizado && gasto.participantes.any { gasto.pagos[it] != true }
+    }
+
+    Column(
         modifier = Modifier
-            .fillMaxSize()
+            .fillMaxWidth()
             .padding(16.dp)
     ) {
-        if (gastos.isEmpty()) {
-            item {
-                Text("No hay gastos compartidos aún.")
-            }
+        Text("Gastos compartidos activos", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(16.dp))
+
+        if (gastosActivos.isEmpty()) {
+            Text("No hay gastos compartidos activos.")
         } else {
-            items(gastos.sortedByDescending { it.timestamp }) { gasto ->
+            gastosActivos.sortedByDescending { it.timestamp }.forEach { gasto ->
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -564,7 +583,6 @@ fun GastosCompartidos(
         }
     }
 }
-
 
 
 @Composable
@@ -762,32 +780,40 @@ fun CustomTopBar(navController: NavHostController, viewModel: MainViewModel) {
 @Composable
 fun CustomContent(padding: PaddingValues, viewModel: MainViewModel, navController: NavHostController) {
     val votaciones by viewModel.votaciones.observeAsState(emptyList())
-    val gastos by viewModel.gastosCompartidos.observeAsState(emptyList())
+    val gastos = viewModel.gastosCompartidos.observeAsState(emptyList())
 
-    Column(
+    LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .padding(padding)
     ) {
-        ActiveVotes(
-            votaciones = votaciones,
-            onVotacionClick = { votacion ->
-                navController.navigate(AppScreens.VoteDetailScreen.createRoute(votacion.id))
-            },
-            viewModel = viewModel
-        )
+        item {
+            ActiveVotes(
+                votaciones = votaciones,
+                onVotacionClick = { votacion ->
+                    navController.navigate(AppScreens.VoteDetailScreen.createRoute(votacion.id))
+                },
+                viewModel = viewModel
+            )
+        }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        item {
+            Spacer(modifier = Modifier.height(16.dp))
+        }
 
-        GastosCompartidos(
-            gastos = gastos,
-            viewModel = viewModel,
-            onGastoClick = { gasto ->
-                navController.navigate(AppScreens.GastoDetailScreen.createRoute(gasto.id))
-            }
-        )
+        item {
+            ActiveGastosCompartidos(
+                gastos = gastos.value,
+                viewModel = viewModel,
+                onGastoClick = { gasto ->
+                    navController.navigate(AppScreens.GastoDetailScreen.createRoute(gasto.id))
+                }
+            )
+        }
+
     }
 }
+
 
 
 

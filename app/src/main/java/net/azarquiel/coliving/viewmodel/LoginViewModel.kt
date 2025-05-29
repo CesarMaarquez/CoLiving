@@ -31,14 +31,14 @@ class LoginViewModel : ViewModel() {
         auth.removeAuthStateListener(authListener)
     }
 
-    fun checkUser() {
-        if (auth.currentUser != null) {
-            setUserLogged(true)
-        }
-        else {
-            setUserLogged(false)
-        }
-    }
+//    fun checkUser() {
+//        if (auth.currentUser != null) {
+//            setUserLogged(true)
+//        }
+//        else {
+//            setUserLogged(false)
+//        }
+//    }
 
     fun setUserLogged(value: Boolean) {
         _isUserLogged.value = value

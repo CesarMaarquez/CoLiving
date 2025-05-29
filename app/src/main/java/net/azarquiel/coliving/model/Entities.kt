@@ -29,7 +29,8 @@ data class GastoCompartido(
     val participantes: List<String> = emptyList(),
     val pagos: Map<String, Boolean> = emptyMap(),
     val creadorId: String = "",
-    val timestamp: Long = 0L
+    val timestamp: Long = 0L,
+    val finalizado: Boolean = false
 )
 
 

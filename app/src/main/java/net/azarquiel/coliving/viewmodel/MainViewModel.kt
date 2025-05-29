@@ -222,6 +222,32 @@ class MainViewModel(mainActivity: MainActivity): ViewModel() {
         }
     }
 
+    fun marcarGastoComoFinalizado(
+        gastoId: String,
+        onSuccess: () -> Unit = {},
+        onFailure: (Exception) -> Unit = {}
+    ) {
+        val docRef = db.collection("gastosCompartidos").document(gastoId)
+
+        db.runTransaction { transaction ->
+            val snapshot = transaction.get(docRef)
+            val gasto = snapshot.toObject(GastoCompartido::class.java)
+                ?: throw Exception("Gasto no encontrado")
+
+            val pagos = gasto.pagos
+            val participantes = gasto.participantes
+
+            val todosPagaron = participantes.all { pagos[it] == true }
+
+            if (todosPagaron && !gasto.finalizado) {
+                transaction.update(docRef, "finalizado", true)
+            }
+        }.addOnSuccessListener { onSuccess() }
+            .addOnFailureListener { onFailure(it) }
+    }
+
+
+
 
     fun contarVotos(
         votacionId: String,

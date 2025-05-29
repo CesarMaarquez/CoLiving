@@ -34,11 +34,6 @@ class VoteDetailViewModel : ViewModel() {
         }
     }
 
-    fun guardarVotacion(votacion: Votacion, onSuccess: () -> Unit, onFailure: (Exception) -> Unit) {
-        db.collection("votaciones").document(votacion.id).set(votacion)
-            .addOnSuccessListener { onSuccess() }
-            .addOnFailureListener { onFailure(it) }
-    }
 
     fun votar(context: Context, votacionId: String, opcion: String, anonima: Boolean, userId: String?, onSuccess: () -> Unit, onFailure: (Exception) -> Unit) {
         val voto = if (anonima) {
@@ -53,16 +48,4 @@ class VoteDetailViewModel : ViewModel() {
             .addOnFailureListener { onFailure(it) }
     }
 
-    fun contarVotos(votacionId: String, onResult: (Map<String, Int>) -> Unit) {
-        db.collection("votaciones").document(votacionId).collection("votos").get()
-            .addOnSuccessListener { snapshot ->
-                val votos = snapshot.documents.mapNotNull { it.toObject(Voto::class.java) }
-                val recuento = votos.groupingBy { it.opcion }.eachCount()
-                onResult(recuento)
-            }
-    }
-
-    fun updateDialogDetailVotacion(value: Boolean) {
-        dialogDetailVotacion = value
-    }
 }
