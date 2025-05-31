@@ -26,24 +26,13 @@ class LoginViewModel : ViewModel() {
         auth.addAuthStateListener(authListener)
     }
 
+    //Limpiar el listener cuando el ViewModel se destruye
     override fun onCleared() {
         super.onCleared()
         auth.removeAuthStateListener(authListener)
     }
 
-//    fun checkUser() {
-//        if (auth.currentUser != null) {
-//            setUserLogged(true)
-//        }
-//        else {
-//            setUserLogged(false)
-//        }
-//    }
-
-    fun setUserLogged(value: Boolean) {
-        _isUserLogged.value = value
-    }
-
+    //Función para iniciar sesión a través de un logueo con correo y contraseña
     fun logUser(
         email: String,
         password: String,

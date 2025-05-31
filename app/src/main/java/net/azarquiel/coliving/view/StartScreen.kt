@@ -14,6 +14,8 @@ import net.azarquiel.coliving.navigation.AppScreens
 import net.azarquiel.coliving.viewmodel.MainViewModel
 import net.azarquiel.coliving.viewmodel.StartViewModel
 
+//Pantalla lanzada al iniciar la app, muestra un circulo de progreso mientras procesa si hay un user logueado
+//si está, va directamente a la pantalla principal, si no, a la de login
 @Composable
 fun StartScreen(navController: NavHostController, viewModel: StartViewModel) {
     val user = FirebaseAuth.getInstance().currentUser

@@ -24,6 +24,7 @@ class VoteDetailViewModel : ViewModel() {
         cargarVotaciones()
     }
 
+    //funcion para cargar las votaciones
     private fun cargarVotaciones() {
         db.collection("votaciones").addSnapshotListener { snapshot, _ ->
             snapshot?.let {
@@ -33,7 +34,7 @@ class VoteDetailViewModel : ViewModel() {
         }
     }
 
-
+    //funcion para votar en una votacion
     fun votar(context: Context, votacionId: String, opcion: String, anonima: Boolean, userId: String?, onSuccess: () -> Unit, onFailure: (Exception) -> Unit) {
         val voto = if (anonima) {
             val deviceId = Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)

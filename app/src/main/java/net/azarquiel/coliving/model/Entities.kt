@@ -1,5 +1,7 @@
 package net.azarquiel.coliving.model
 
+//Entities
+
 data class Votacion(
     val id: String = "",
     val pregunta: String = "",
@@ -12,7 +14,7 @@ data class Voto(
     val userId: String? = null,                 // null si es anónima
     val opcion: String = "",
     val timestamp: String = System.currentTimeMillis().toString(),
-    val deviceId: String? = null                // null si es pública
+    val deviceId: String? = null
 )
 
 

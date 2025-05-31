@@ -42,7 +42,6 @@ class MainViewModel(mainActivity: MainActivity): ViewModel() {
     private var _isUserLogged = MutableLiveData(false)
     val isUserLogged: MutableLiveData<Boolean> = _isUserLogged
 
-    //recogerlas a traves de un metodo de la bdd firestore
     private val _votaciones: MutableLiveData<List<Votacion>> = MutableLiveData()
     val votaciones: LiveData<List<Votacion>> = _votaciones
 
@@ -84,6 +83,7 @@ class MainViewModel(mainActivity: MainActivity): ViewModel() {
         auth.removeAuthStateListener(authListener)
     }
 
+    //funcion para escuchar los mensajes directamente de la bdd
     private fun setListener() {
         db.collection("posts")
             .orderBy(
@@ -101,12 +101,13 @@ class MainViewModel(mainActivity: MainActivity): ViewModel() {
             }
     }
 
+    //funcion para formatear el timestamp de los mensajes
     fun formatTimestamp(timestamp: Long): String {
         val sdf = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
         return sdf.format(java.util.Date(timestamp))
     }
 
-
+    //carga los mensajes de la forma que le gusta al chat
     private fun documentToList(documents: List<DocumentSnapshot>) {
         val mensajes = ArrayList<Post>()
         documents.forEach { d ->
@@ -118,7 +119,7 @@ class MainViewModel(mainActivity: MainActivity): ViewModel() {
         _mensajes.value = mensajes
     }
 
-
+    //funcion para cargar los usuarios para posteriormnete marcar los debidos en los gastos compartidos
     fun cargarUsuarios() {
         Log.d(TAG, "Iniciando carga de usuarios")
         db.collection("user")
@@ -134,6 +135,7 @@ class MainViewModel(mainActivity: MainActivity): ViewModel() {
             }
     }
 
+    //funcion para enviar un mensaje de texto
     fun enviarMensaje(texto: String) {
         val usuario = auth.currentUser?.email?.split("@")?.get(0) ?: "Anon"
         val post = hashMapOf(
@@ -151,6 +153,7 @@ class MainViewModel(mainActivity: MainActivity): ViewModel() {
             }
     }
 
+    //funcion para cargar las votaciones
     private fun cargarVotaciones() {
         Log.d("TAG", "Iniciando carga de votaciones")
         db.collection("votaciones")
@@ -169,7 +172,7 @@ class MainViewModel(mainActivity: MainActivity): ViewModel() {
             }
     }
 
-
+    //funcion para guardar una votacion (en la creación)
     fun guardarVotacion(
         votacion: Votacion,
         onSuccess: () -> Unit,
@@ -181,6 +184,7 @@ class MainViewModel(mainActivity: MainActivity): ViewModel() {
             .addOnFailureListener { onFailure(it) }
     }
 
+    //funcion para cargar los gastos compartidos
     private fun cargarGastosCompartidos() {
         Log.d(TAG, "Iniciando carga de gastos compartidos")
         db.collection("gastosCompartidos")
@@ -199,7 +203,7 @@ class MainViewModel(mainActivity: MainActivity): ViewModel() {
             }
     }
 
-
+    //funcion para guardar un gasto compartido (en la creación)
     fun guardarGastoCompartido(
         gasto: GastoCompartido,
         onSuccess: () -> Unit,
@@ -212,7 +216,7 @@ class MainViewModel(mainActivity: MainActivity): ViewModel() {
             .addOnFailureListener { onFailure(it) }
     }
 
-
+    //funcion para comprobar si el usuario está logueado
     fun checkUser() {
         if (auth.currentUser != null) {
             setUserLogged(true)
@@ -222,6 +226,7 @@ class MainViewModel(mainActivity: MainActivity): ViewModel() {
         }
     }
 
+    //funcion para marcar un gasto compartido completo como finalizado
     fun marcarGastoComoFinalizado(
         gastoId: String,
         onSuccess: () -> Unit = {},
@@ -248,7 +253,7 @@ class MainViewModel(mainActivity: MainActivity): ViewModel() {
 
 
 
-
+    //funcion para contar los votos de una votacion
     fun contarVotos(
         votacionId: String,
         onResult: (Map<String, Int>) -> Unit

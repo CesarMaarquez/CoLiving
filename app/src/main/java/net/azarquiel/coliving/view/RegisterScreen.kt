@@ -18,6 +18,7 @@ import net.azarquiel.coliving.navigation.AppScreens
 import net.azarquiel.coliving.viewmodel.MainViewModel
 import net.azarquiel.coliving.viewmodel.RegisterViewModel
 
+//Pantalla de registro de la aplicación para crear usuarios
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterScreen(

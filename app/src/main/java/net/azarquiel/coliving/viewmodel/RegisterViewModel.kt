@@ -24,6 +24,7 @@ class RegisterViewModel : ViewModel() {
         auth.addAuthStateListener(authListener)
     }
 
+    //Limpiar el listener cuando el ViewModel se destruye
     override fun onCleared() {
         super.onCleared()
         auth.removeAuthStateListener(authListener)
@@ -40,6 +41,7 @@ class RegisterViewModel : ViewModel() {
 //        }
 //    }
 
+    //Función para registrar un usuario a través de correo y contraseña
     fun createUser(
         email: String,
         password: String,
@@ -59,6 +61,7 @@ class RegisterViewModel : ViewModel() {
             }
     }
 
+    //funcion que regsitra en la bdd a los users con su nick
     private fun updateUser(nick: String?, uid: String?) {
         val user = mutableMapOf(
             "nick" to (nick ?: "Anon"),

@@ -37,6 +37,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+//Pantalla de detalle de votaciones, con la finalidad de que los usuarios puedan votar
 @Composable
 fun VoteDetailScreen(
     navController: NavController,
@@ -49,8 +50,8 @@ fun VoteDetailScreen(
     val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
     val userId = prefs.getString("userId", null)
 
-    Log.d("VotoDebug", "userId recuperado: $userId")
-    Log.d("VotoDebug", "anonima: ${votacion.anonima}")
+    //Log.d("VotoDebug", "userId recuperado: $userId")
+    //Log.d("VotoDebug", "anonima: ${votacion.anonima}")
 
 
     var selectedOption by remember { mutableStateOf<String?>(null) }

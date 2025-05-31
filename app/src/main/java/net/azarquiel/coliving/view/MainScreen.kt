@@ -86,7 +86,7 @@ import java.util.Date
 import java.util.Locale
 import java.util.UUID
 
-
+//Pantalla principal de la aplicación
 @Composable
 fun MainScreen(navController: NavHostController, viewModel: MainViewModel) {
 

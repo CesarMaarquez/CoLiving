@@ -35,6 +35,7 @@ fun AppNavigation(viewModel: MainViewModel) {
         composable(AppScreens.StartScreen.route) {
             StartScreen(navController, StartViewModel())
         }
+        //Pasamos el id de votacion en la ruta para posteriormente votar sobre ella
         composable("VoteDetailScreen/{votacionId}") { backStackEntry ->
             val votacionId = backStackEntry.arguments?.getString("votacionId")
             val votacion = viewModel.votaciones.value?.find { it.id == votacionId }
@@ -47,6 +48,7 @@ fun AppNavigation(viewModel: MainViewModel) {
                 )
             }
         }
+        //Pasamos el id del gasto en la ruta para posteriormente realizar pagos sobre ella
         composable("GastoDetailScreen/{gastoId}") { backStackEntry ->
             val gastoId = backStackEntry.arguments?.getString("gastoId")
             val gasto = viewModel.gastosCompartidos.value?.find { it.id == gastoId }

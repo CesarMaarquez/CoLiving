@@ -18,6 +18,8 @@ import net.azarquiel.coliving.MainActivity
 import net.azarquiel.coliving.navigation.AppScreens
 import net.azarquiel.coliving.viewmodel.LoginViewModel
 import net.azarquiel.coliving.viewmodel.MainViewModel
+
+//Pantalla de logueo que aparece o bien, al iniciar la app por primera vez, o al cerrar sesión
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(

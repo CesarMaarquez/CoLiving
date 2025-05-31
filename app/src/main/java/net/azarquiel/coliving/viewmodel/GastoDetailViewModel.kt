@@ -27,6 +27,7 @@ class GastoDetailViewModel : ViewModel() {
         cargarGastosCompartidos()
     }
 
+    //funcion para cargar los gastos compartidos
     private fun cargarGastosCompartidos() {
         db.collection("gastosCompartidos").addSnapshotListener { snapshot, _ ->
             snapshot?.let {
@@ -36,12 +37,7 @@ class GastoDetailViewModel : ViewModel() {
         }
     }
 
-    fun guardarGastoCompartido(gasto: GastoCompartido, onSuccess: () -> Unit, onFailure: (Exception) -> Unit) {
-        db.collection("gastosCompartidos").document(gasto.id).set(gasto)
-            .addOnSuccessListener { onSuccess() }
-            .addOnFailureListener { onFailure(it) }
-    }
-
+    //funcion para marcar un gasto como pagado (para un user en concreto)
     fun marcarPagado(gastoId: String, userId: String, onSuccess: () -> Unit, onFailure: (Exception) -> Unit) {
         val docRef = db.collection("gastosCompartidos").document(gastoId)
         db.runTransaction { transaction ->
@@ -54,9 +50,6 @@ class GastoDetailViewModel : ViewModel() {
             .addOnFailureListener { onFailure(it) }
     }
 
-    fun updateDialogDetailGasto(value: Boolean) {
-        dialogDetailGasto = value
-    }
 
     //para acceder a la variable auth desde las views
     fun getCurrentUserNick(): String {

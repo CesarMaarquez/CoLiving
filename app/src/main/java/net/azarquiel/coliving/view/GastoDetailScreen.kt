@@ -24,6 +24,8 @@ import androidx.compose.ui.unit.sp
 import net.azarquiel.coliving.model.GastoCompartido
 import net.azarquiel.coliving.viewmodel.GastoDetailViewModel
 import net.azarquiel.coliving.viewmodel.MainViewModel
+
+//Pantalla de detalle de gastos compartidos para poder indicar que un usuario ha pagado
 @Composable
 fun GastoDetailScreen(
     gasto: GastoCompartido,
